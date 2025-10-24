@@ -44,16 +44,20 @@ export class SaveAppLog implements LoggerService {
     message: string,
     trace?: string,
     context?: string,
-    meta?: Record<string, any>,
+    additional?: Record<string, any>,
   ): void {
     if (!this.enableError) return;
     console.error(
-      this.formatLog('error', message, context, { trace, ...meta }),
+      this.formatLog('error', message, context, { trace, ...additional }),
     );
   }
 
-  warn(message: string, context?: string, meta?: Record<string, any>): void {
+  warn(
+    message: string,
+    context?: string,
+    additional?: Record<string, any>,
+  ): void {
     if (!this.enableWarn) return;
-    console.warn(this.formatLog('warn', message, context, meta));
+    console.warn(this.formatLog('warn', message, context, additional));
   }
 }

@@ -13,7 +13,6 @@ export class ExceptionHandle implements ExceptionFilter {
   private logger: SaveAppLog;
 
   constructor(logger?: SaveAppLog) {
-    // allow manual instantiation (SaveAppLog requires a classname in ctor)
     this.logger = logger ?? new SaveAppLog('ExceptionHandle');
   }
 

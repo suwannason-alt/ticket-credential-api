@@ -5,4 +5,7 @@ import { TemplateEntity } from './template.entity';
 export class TokenEntity extends TemplateEntity {
   @Column('bytea')
   token: string;
+
+  @Column('bytea')
+  refreshToken: string;
 }

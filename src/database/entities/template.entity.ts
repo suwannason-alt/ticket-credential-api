@@ -9,13 +9,19 @@ export class TemplateEntity {
   @PrimaryColumn('uuid')
   uuid: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamptz',
+    default: () => "CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok'",
+  })
   createdAt: Date;
 
   @Column({ type: 'uuid', nullable: true })
   createdBy: string;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({
+    type: 'timestamptz',
+    default: () => "CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok'",
+  })
   updatedAt: Date;
 
   @Column({ type: 'uuid', nullable: true })
