@@ -30,10 +30,13 @@ export class CredentialController {
       const { body } = req;
       this.logger.debug({ body });
       const token = await this.credentialService.createToken(body);
+      this.logger.log(`create credential completed.`, this.createToken.name, {
+        payload: body,
+      });
       res.status(httpStatus.OK);
       res.json({ success: true, data: { token } });
     } catch (error: any) {
-      res.status(500);
+      res.status(httpStatus.INTERNAL_SERVER_ERROR);
       res.json({ success: false, message: error.message });
     }
   }

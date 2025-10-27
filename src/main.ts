@@ -10,11 +10,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new SaveAppLog(AppModule.name),
+    bufferLogs: true,
   });
 
   app.use(helmet());
   app.setGlobalPrefix(`/api/v1`);
   app.useGlobalPipes(new ValidationPipe());
+
+  app.enableCors();
   app.useGlobalFilters(
     new ExceptionHandle(new SaveAppLog('GlobalExceptionHandle')),
   );

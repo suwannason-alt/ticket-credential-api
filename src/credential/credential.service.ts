@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
-import jwt from 'jsonwebtoken';
 import { SaveAppLog } from '../utils/logger';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TokenEntity } from '../database/entities/token';
 import { Repository } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
+import jose from 'jose';
 
 @Injectable()
 export class CredentialService {
@@ -23,12 +23,46 @@ export class CredentialService {
       const sessionId = uuidv7();
       const secret = this.configService.get<string>('JWT_SECRET');
       Object.assign(payload, { sessionId });
-      const token = jwt.sign(payload, secret, { expiresIn: '1h' });
-      const refreshToken = jwt.sign({ sessionId }, secret, { expiresIn: '3d' });
-      this.logger.debug({
-        token,
-        secret,
-      });
+      const signedJwt = await new jose.SignJWT(payload)
+        .setProtectedHeader({
+          alg: 'HS256',
+          typ: 'JWT',
+        })
+        .setIssuedAt(Math.floor(Date.now() / 1000))
+        .setExpirationTime('1d')
+        .setIssuer(`sys:openticket`)
+        .setAudience(`service:credential`)
+        .sign(new TextEncoder().encode(secret));
+      const token = await new jose.CompactEncrypt(
+        new TextEncoder().encode(signedJwt),
+      )
+        .setProtectedHeader({
+          alg: 'dir',
+          enc: 'A256GCM',
+          cty: 'JWT',
+        })
+        .encrypt(new TextEncoder().encode(secret));
+
+      const signedRefreshToken = await new jose.SignJWT({ sessionId })
+        .setProtectedHeader({
+          alg: 'HS256',
+          typ: 'JWT',
+        })
+        .setIssuedAt(Math.floor(Date.now() / 1000))
+        .setExpirationTime('7d')
+        .setIssuer(`sys:openticket`)
+        .setAudience(`service:credential`)
+        .sign(new TextEncoder().encode(secret));
+
+      const refreshToken = await new jose.CompactEncrypt(
+        new TextEncoder().encode(signedRefreshToken),
+      )
+        .setProtectedHeader({
+          alg: 'dir',
+          enc: 'A256GCM',
+          cty: 'JWT',
+        })
+        .encrypt(new TextEncoder().encode(secret));
       await this.tokenRepository
         .createQueryBuilder()
         .insert()
@@ -50,11 +84,18 @@ export class CredentialService {
     }
   }
 
-  verify(token: string) {
+  async verify(token: string) {
     try {
-      const payload = jwt.verify(
+      const secret = this.configService.get<string>('JWT_SECRET');
+      const { plaintext } = await jose.compactDecrypt(
         token,
-        this.configService.get<string>('JWT_SECRET'),
+        new TextEncoder().encode(secret),
+      );
+
+      const { payload } = await jose.jwtVerify(
+        plaintext,
+        new TextEncoder().encode(secret),
+        { issuer: 'sys:openticket', audience: 'service:credential' },
       );
 
       return payload;
@@ -66,10 +107,19 @@ export class CredentialService {
 
   async refreshToken(token: string, refreshToken: string) {
     try {
-      const verifyRefresh = await jwt.verify(
+      const secret = this.configService.get<string>('JWT_SECRET');
+      const { plaintext } = await jose.compactDecrypt(
         refreshToken,
-        this.configService.get<string>('JWT_SECRET'),
+        new TextEncoder().encode(secret),
       );
+
+      const { payload } = await jose.jwtVerify(
+        plaintext,
+        new TextEncoder().encode(secret),
+        { issuer: 'sys:openticket', audience: 'service:credential' },
+      );
+      const verifyRefresh = payload;
+
       const lastLogin = await this.tokenRepository
         .createQueryBuilder(`tk`)
         .where(`tk.uuid = :uuid`, { uuid: verifyRefresh.sessionId })
@@ -77,6 +127,8 @@ export class CredentialService {
           `pgp_sym_decrypt(tk.token, '${this.configService.get('ENCRYPTION_KEY')}') AS token`,
         ])
         .getRawOne();
+
+      this.logger.debug({ lastLogin });
 
       if (!lastLogin) {
         this.logger.warn(`Not found refresh token.`, this.refreshToken.name, {
@@ -86,17 +138,29 @@ export class CredentialService {
         throw new Error(`Not found refresh token.`);
       }
 
-      const oldToken = jwt.decode(lastLogin.token);
-      if (oldToken.sessionId !== verifyRefresh.sessionId) {
+      const oldToken = await jose.compactDecrypt(
+        token,
+        new TextEncoder().encode(secret),
+      );
+
+      const decoded = jose.decodeJwt(
+        new TextDecoder().decode(oldToken.plaintext),
+      );
+      this.logger.debug({ decoded });
+      if (decoded.sessionId !== verifyRefresh.sessionId) {
         this.logger.warn(`Refresh token not match.`, this.refreshToken.name, {
           token,
           refreshToken,
+          refreshSessionId: verifyRefresh.sessionId,
+          tokenSessionId: decoded.sessionId,
         });
         throw new Error(`Refresh token not match.`);
       }
-      const decoded = jwt.decode(token);
       delete decoded.iat;
       delete decoded.exp;
+      this.logger.log(`refresh token for completed`, this.refreshToken.name, {
+        sessionId: verifyRefresh.sessionId,
+      });
       return this.createToken(decoded);
     } catch (error) {
       this.logger.error(error.message, error.stack, this.refreshToken.name);
