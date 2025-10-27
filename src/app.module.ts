@@ -7,7 +7,12 @@ import { CredentialModule } from './credential/credential.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, CredentialModule, HealthModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule,
+    CredentialModule,
+    HealthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

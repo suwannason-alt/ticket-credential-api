@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TokenEntity } from '../database/entities/token';
 import { Repository } from 'typeorm';
-import { v7 as uuidv7 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 import jose from 'jose';
 
 @Injectable()
@@ -20,7 +20,7 @@ export class CredentialService {
   ) {}
   async createToken(payload: any) {
     try {
-      const sessionId = uuidv7();
+      const sessionId = uuidv4();
       const secret = this.configService.get<string>('JWT_SECRET');
       Object.assign(payload, { sessionId });
       const signedJwt = await new jose.SignJWT(payload)
