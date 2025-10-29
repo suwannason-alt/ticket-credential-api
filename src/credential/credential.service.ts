@@ -23,25 +23,7 @@ export class CredentialService {
       const sessionId = uuidv4();
       const secret = this.configService.get<string>('JWT_SECRET');
       Object.assign(payload, { sessionId });
-      const signedJwt = await new jose.SignJWT(payload)
-        .setProtectedHeader({
-          alg: 'HS256',
-          typ: 'JWT',
-        })
-        .setIssuedAt(Math.floor(Date.now() / 1000))
-        .setExpirationTime('1d')
-        .setIssuer(`sys:openticket`)
-        .setAudience(`service:credential`)
-        .sign(new TextEncoder().encode(secret));
-      const token = await new jose.CompactEncrypt(
-        new TextEncoder().encode(signedJwt),
-      )
-        .setProtectedHeader({
-          alg: 'dir',
-          enc: 'A256GCM',
-          cty: 'JWT',
-        })
-        .encrypt(new TextEncoder().encode(secret));
+      const token = await this.createJwt(payload);
 
       const signedRefreshToken = await new jose.SignJWT({ sessionId })
         .setProtectedHeader({
@@ -82,6 +64,30 @@ export class CredentialService {
       this.logger.error(error.message, error.stack, this.createToken.name);
       throw new Error(error);
     }
+  }
+
+  async createJwt(payload: any) {
+    const secret = this.configService.get<string>('JWT_SECRET');
+    const signedJwt = await new jose.SignJWT(payload)
+      .setProtectedHeader({
+        alg: 'HS256',
+        typ: 'JWT',
+      })
+      .setIssuedAt(Math.floor(Date.now() / 1000))
+      .setExpirationTime('1d')
+      .setIssuer(`sys:openticket`)
+      .setAudience(`service:credential`)
+      .sign(new TextEncoder().encode(secret));
+    const token = await new jose.CompactEncrypt(
+      new TextEncoder().encode(signedJwt),
+    )
+      .setProtectedHeader({
+        alg: 'dir',
+        enc: 'A256GCM',
+        cty: 'JWT',
+      })
+      .encrypt(new TextEncoder().encode(secret));
+    return token;
   }
 
   async verify(token: string) {
