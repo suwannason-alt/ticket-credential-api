@@ -84,4 +84,22 @@ export class CredentialController {
       res.json({ success: false, message: error.message });
     }
   }
+
+  @Patch('/add-fields')
+  async modifyCurrentToken(
+    @Headers('Authorization') authorization: string,
+    @Body() body: any,
+    @Res() res: Response,
+  ) {
+    try {
+      const token = authorization.split(' ');
+      await this.credentialService.verify(token[1]);
+      const results = await this.credentialService.createToken(body);
+      res.json({ success: true, data: { token: results } });
+    } catch (error) {
+      this.logger.error(error.message, error.stack, this.verify.name);
+      res.status(httpStatus.UNAUTHORIZED);
+      res.json({ success: false, message: error.message });
+    }
+  }
 }
