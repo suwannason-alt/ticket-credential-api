@@ -28,7 +28,6 @@ export class CredentialController {
   async createToken(@Req() req, @Res() res: Response) {
     try {
       const { body } = req;
-      this.logger.debug({ body });
       const token = await this.credentialService.createToken(body);
       this.logger.log(`create credential completed.`, this.createToken.name, {
         payload: body,

@@ -74,7 +74,7 @@ export class CredentialService {
         typ: 'JWT',
       })
       .setIssuedAt(Math.floor(Date.now() / 1000))
-      .setExpirationTime('1d')
+      .setExpirationTime('1 day')
       .setIssuer(`sys:openticket`)
       .setAudience(`service:credential`)
       .sign(new TextEncoder().encode(secret));
