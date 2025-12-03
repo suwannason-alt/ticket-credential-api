@@ -1,4 +1,4 @@
-FROM node:22.15.1 as deps
+FROM node:22-alpine as deps
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY . .
 RUN yarn build
 
 # ---------- 2. Production ----------
-FROM node:22.15.1 AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
